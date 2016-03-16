@@ -1,0 +1,386 @@
+module ClassDiagram2Cassandra;-- @path
+-- CD=/ClassDiagram2Cassandra/MetaModels/ClassDiagram.ecore
+-- @path Ca=/ClassDiagram2Cassandra/MetaModels/Cassandra.ecore
+create OUT: Ca from IN: CD;
+
+endpoint rule theEnd(){
+	using {
+		cc: Sequence(CD!Class) = CD!Class.allInstances() -> select(e | e.allAttrsND <> 0
+				and e.allAttrsND -> exists(f | f.extractNotation = 'ct') and not
+				CD!Generalization.allInstances() -> exists(g | g.specific = e));
+		ac: Sequence(CD!Association) = CD!Association.allInstances() -> select(e | (e.
+				memberEnd -> select(f | f.aggregation=#none) -> size() = 2 and (e.
+				memberEnd -> at(1).multiplicity = '1' and e.memberEnd -> at(2).
+				multiplicity = '*')or e.memberEnd -> select(g | g.multiplicity = '*') ->
+				size() = 2) or (e.memberEnd -> exists(h | h.aggregation=#shared or h.
+				aggregation=#composite) and e.memberEnd -> select(i | i.multiplicity =
+				'*') -> size() = 1));
+	}
+	do {
+		for(e in cc) {
+			for(f in e.allAttrsND -> select(g | g.extractNotation = 'ct')){
+				thisModule.GenCounterTable(f, thisModule.sortAttrs(e.allAttrsND ->
+						select(h | h.extractNotation -> startsWith('p'))), thisModule.
+						sortAttrs(e.allAttrsND -> select(i | i.extractNotation ->
+						startsWith('c') and not(i.extractNotation -> startsWith('ct')))),
+						e);
+			}
+		}
+		for(f in ac) {
+			thisModule.GenRefTable(f);
+		}
+	}
+}
+
+--- at.ia = thisEndAncestor at.aa = thatEndAncestor
+lazy rule GenRefTable {
+	from
+		a: CD!Association
+	using {
+		at: TupleType(ia: CD!Class, aa: CD!Class) = if a.memberEnd -> at(2).multiplicity
+				= '*' then
+			Tuple{ia = a.memberEnd -> at(1).type.ancestor, aa = a.memberEnd -> at(2).type.
+					ancestor}
+		else
+			Tuple{ia = a.memberEnd -> at(2).type.ancestor, aa = a.memberEnd -> at(1).type.
+					ancestor}
+		endif;
+		pk: Sequence(CD!Property) = at.ia.allAttrsND -> select(e | e.extractNotation ->
+				startsWith('p'));
+		ck: Sequence(CD!Property) = at.ia.allAttrsND -> select(e | e.extractNotation ->
+				startsWith('c') and e.extractNotation -> size() = 1) -> union(at.aa.
+				allAttrsND -> select(e | e.extractNotation -> startsWith('p') or (e.
+				extractNotation -> startsWith('c') and e.extractNotation -> size() = 1)));
+		dc: Sequence(Ca!Column) = a.genDAColumn(if a.memberEnd -> at(2).multiplicity= '*'
+				then 2 else 1 endif);
+	}
+	to
+		b: Ca!Table (
+			name <- a.extractName + '_' + at.ia.name + '_' + at.aa.name,
+			partitionKey <- pk -> collect(e | thisModule.Attribute2Column(e)),
+			clusteringColumn <- ck -> collect(e | thisModule.Attribute2Column(e)),
+			otherColumn <- dc
+		)
+}
+
+rule Class2Table {
+	from
+		a: CD!Class (
+			a.needGenerate and not CD!Generalization.allInstances() -> exists(e | e.
+					specific = a)
+		)
+	using {
+		pk: Sequence(CD!Property) = thisModule.sortAttrs(a.allAttrsND -> select(e | e.
+				extractNotation -> startsWith('p')));
+		cc: Sequence(CD!Property) = thisModule.sortAttrs(a.allAttrsND -> select(e | e.
+				extractNotation -> startsWith('c') and not(e.extractNotation ->
+				startsWith('ct'))));
+		ic: Sequence(CD!Property) = a.allAttrsND -> select(e | e.extractNotation = 'i');
+		ct: Sequence(CD!Property) = a.allAttrsND -> select(e | e.extractNotation = 'ct');
+		oc: Sequence(CD!Property) = a.allAttrsND -> select(e | not pk -> union(cc) ->
+				union(ic) -> union(ct) -> exists(f | f = e));
+				-------------------------------------------------------------------------
+	
+		as: Sequence(CD!Association) = CD!Association.allInstances() -> select(e | a.
+				relatedClassifier -> exists(f | f = e.memberEnd -> at(1).type)) ->
+				select(g | g.memberEnd -> select(h | h.aggregation=#none) -> size() = 2
+				and (g.memberEnd -> select(i | i.multiplicity = '1') -> size() = 2 or (g.
+				memberEnd -> at(1).multiplicity = '*' and g.memberEnd -> at(2).
+				multiplicity = '1')));
+		gl: Sequence(CD!Association) = CD!Association.allInstances() -> select(e | a.
+				relatedClassifier -> exists(f | f = e.memberEnd -> at(1).type)) ->
+				select(g | (g.memberEnd -> exists(h | h.aggregation=#shared or h.
+				aggregation=#composite)) and (g.memberEnd -> select(i | i.multiplicity =
+				'1') -> size() = 2 or (g.memberEnd -> at(1).multiplicity = '*' and g.
+				memberEnd -> at(2).multiplicity = '1')));
+		gr: Sequence(CD!Association) = CD!Association.allInstances() -> select(e | a.
+				relatedClassifier -> exists(f | f = e.memberEnd -> at(2).type)) ->
+				select(g | (g.memberEnd -> exists(h | h.aggregation=#shared or h.
+				aggregation=#composite)) and (g.memberEnd -> select(i | i.multiplicity =
+				'1') -> size() = 2 or (g.memberEnd -> at(1).multiplicity = '1' and g.
+				memberEnd -> at(2).multiplicity = '*')));
+		cs: Sequence(Ca!Column) = as -> union(gl) -> collect(e | thisModule.
+				GenCustomColumn(Tuple{n = e.pkName(2), dt = e.memberEnd -> at(2).type.
+				ancestor.pkType})) -> union(gr -> collect(e | thisModule.
+				GenCustomColumn(Tuple{n = e.pkName(1), dt = e.memberEnd -> at(1).type.
+				ancestor.pkType})));
+		da: Sequence(Ca!Column) = as -> union(gl) -> collect(e | e.genDAColumn(2)) ->
+				union(gr -> collect(e | e.genDAColumn(1)));
+	}
+	to
+		b: Ca!Table (
+			name <- a.name,
+			partitionKey <- pk -> collect(e | thisModule.Attribute2Column(e)),
+			clusteringColumn <- cc -> collect(e | thisModule.Attribute2Column(e)),
+			indexedColumn <- ic -> collect(e | thisModule.Attribute2Column(e)),
+			otherColumn <- oc -> collect(e | thisModule.Attribute2Column(e)) -> union(cs)
+					-> union(da)
+		)
+}
+
+helper context CD!Association def: genDAColumn(end: Integer): Sequence(Ca!Column) =
+	self.denormAttr(end) -> collect(e | thisModule.GenCustomColumn(Tuple{n = if self.
+			memberEnd -> at(end).name <> '' then
+						self.memberEnd -> at(end).name
+					else
+						self.memberEnd -> at(end).type.name
+					endif + '_' + e.extractName, dt = e.type.name}));
+
+helper context CD!Association def: denormAttr(end: Integer): Sequence(CD!Property) =
+	self.memberEnd -> at(end).type.ancestor.allAttrsND -> select(e | self.name.
+			extractNotationR -> select(f | f.startsWith('d:end' + end.toString())) ->
+			collect(g | g -> substring(8, g -> size())) -> exists(h | h = e.extractName));
+
+helper context CD!Association def: pkName(end: Integer): String =
+	let en: String =
+		if self.memberEnd -> at(end).name<>'' then self.memberEnd -> at(end).name else
+				self.memberEnd -> at(end).type.name endif
+	in
+		if self.name <> '' and not self.name -> startsWith('[') then
+			self.extractName + '_' + en + '_pk'
+		else
+			en + '_pk'
+		endif;
+
+helper context CD!Class def: pkType: String =
+	if (self.pk -> size() = 1) then
+		self.pk -> first().type.name
+	else
+		'frozen <tuple <' + thisModule.conStrings(self.pk -> collect(e | e.type.name.
+				cqlType), ',' + ' ') + '>>'
+	endif;
+
+helper context CD!Class def: pk: Sequence(CD!Property) =
+	self.allAttrsND -> select(e | e.extractNotation -> startsWith('p') or e.
+			extractNotation -> startsWith('c'));
+
+rule HandleAssociation(a: CD!Association){
+	do {
+		thisModule.tableNum <-0;
+	}
+}
+
+rule GenCounterTable(ctc: CD!Property, pk: Sequence(CD!Property), cc:
+		Sequence(CD!Property)
+					 , c: CD!Class){
+	using{
+		ownerClass: Sequence(CD!Class) = c.relatedClassifier -> select(e | e.
+				ownedAttribute -> exists(f | f = ctc));
+		tName: String = if (ownerClass -> size() = 1 and ownerClass -> at(1).name = c.
+				name) then
+			c.name + '_' + ctc.extractName
+		else
+			if (ownerClass -> size() = 1 ) then
+				c.name + '_' + ownerClass -> at(1).name + '_' + ctc.extractName
+			else
+				c.name + '_' + thisModule.conStrings(ownerClass -> excluding(c) ->
+						collect(e | e.name) -> asSequence(), '_') + '_' + ctc.extractName
+			endif
+		endif;
+	}
+	to
+		b: Ca!Table (
+			name <- tName + '_counter',
+			partitionKey <- pk -> collect(e | thisModule.Attribute2Column(e)),
+			clusteringColumn <- cc -> collect(e | thisModule.Attribute2Column(e)),
+			otherColumn <- thisModule.Attribute2ColumnCT(ctc)
+		)
+}
+
+lazy rule Attribute2Column {
+	from
+		a: CD!Property
+	to
+		b: Ca!Column (
+			name <- a.extractName,
+			dataType <- a.type.name.cqlType
+		)
+}
+
+--- If a attribute have a "counter" notation, its type must be "long".
+lazy rule Attribute2ColumnCT {
+	from
+		a: CD!Property
+	to
+		b: Ca!Column (
+			name <- a.extractName,
+			dataType <- 'counter'
+		)
+}
+
+lazy rule GenCustomColumn {
+	from
+		a: TupleType(n: String, dt: String)
+	to
+		b: Ca!Column (
+			name <- a.n,
+			dataType <- a.dt.cqlType
+		)
+}
+
+helper context CD!Class def: attributeByTuple: Map(TupleType(name: String, type: String),
+		CD!Property) =
+	self.allAttrs -> iterate(e; acc: Map(TupleType(name: String, type: String),
+			CD!Property) = Map{} | acc.including(e.toTuple, e));
+
+helper context CD!Property def: toTuple: TupleType(name: String, type: String) =
+	Tuple{name = self.extractName, type = self.type.name};
+
+--- "ND" means No Duplicates.
+helper context CD!Class def: allAttrsND: Sequence(CD!Property) =
+	self.attributeByTuple -> getValues() -> asSequence();
+
+helper context CD!Class def: allAttrs: Sequence(CD!Property) =
+	self.ownedAttribute -> union(CD!Realization.allInstances() -> select(e | e.client ->
+			asSequence() -> first() = self) -> collect(f | f.supplier -> asSequence() ->
+			first().allAttrs)) -> union(CD!Generalization.allInstances() -> select(e | e.
+			general = self) -> collect(f | f.specific.allAttrs)) -> flatten();
+
+helper context CD!Interface def: allAttrs: Sequence(CD!Property) =
+	self.ownedAttribute -> union(CD!Generalization.allInstances() -> select(e | e.
+			specific = self) -> collect(f | f.general.allAttrs));
+
+--- Find parent, ancestor, child and descendant class of current class.
+helper context CD!Class def: relatedClassifier: Sequence(CD!Classifier) =
+	let cseq: Sequence(CD!Classifier) =
+		Sequence{}
+	in
+		cseq -> append(self) -> union(CD!Realization.allInstances() -> select(e | e.
+				client -> asSequence() -> first() = self) -> collect(f | f.supplier ->
+				asSequence() -> first().relatedClassifier)) -> union(CD!Generalization.
+				allInstances() -> select(e | e.general = self) -> collect(f | f.specific.
+				relatedClassifier)) -> flatten();
+
+helper context CD!Interface def: relatedClassifier: Sequence(CD!Classifier) =
+	let iseq: Sequence(CD!Classifier) =
+		Sequence{}
+	in
+		iseq -> append(self) -> union(CD!Generalization.allInstances() -> select(e | e.
+				specific = self) -> collect(f | f.general.relatedClassifier));
+
+helper context CD!Class def: ancestor: CD!Class =
+	let parent: CD!Class =
+		CD!Generalization.allInstances() -> select(e | e.specific = self)
+	in
+		if (parent -> size() = 0) then
+			self
+		else
+			parent -> first().general.ancestor
+		endif;
+
+helper context CD!Property def: extractName: String =
+	if (self.name -> indexOf('[') = -1) then
+		self.name -> trim()
+	else
+		self.name -> substring(1, self.name -> indexOf('[')) -> trim()
+	endif;
+
+helper context CD!Association def: extractName: String =
+	if (self.name -> indexOf('[') = -1) then
+		self.name -> trim()
+	else
+		self.name -> substring(1, self.name -> indexOf('[')) -> trim()
+	endif;
+
+--- Property's name is not allowed to contain char '['.
+helper context CD!Property def: extractNotation: String =
+	if (self.name -> indexOf('[') = -1) then
+		''
+	else
+		self.name -> substring(self.name -> indexOf('[') + 2, self.name -> indexOf(']'))
+	endif;
+
+--- This helper is designed for extract denormalization notation.
+helper context String def: extractNotationR: Sequence(String) =
+	let ss: Sequence(String) =
+		Sequence{}
+	in
+		if (self -> indexOf('[') = -1) then
+			ss
+		else
+			ss -> append(self -> substring(self -> indexOf('[') + 2, self ->
+					indexOf(']'))) -> union(self -> substring(self -> indexOf(']') + 2,
+					self -> size()).extractNotationR)
+		endif;
+
+--- This helper is only for Property which has notation 'p' or 'c'.
+helper context CD!Property def: extractNotationOrder: Integer =
+	self.name -> substring(self.name -> indexOf('[') + 3, self.name -> indexOf(']')) ->
+			toInteger();
+
+helper def: sortAttrs(sseq: Sequence(CD!Property)): Sequence(CD!Property) =
+	let tseq: Sequence(CD!Property) =
+		Sequence{}
+	in
+		if (sseq->size()=0 or sseq->size()=1) then
+	sseq
+	else
+		tseq -> append(thisModule.min(sseq)) -> union(thisModule.sortAttrs(sseq ->
+				excluding(thisModule.min(sseq))))
+	endif;
+
+helper def: min(s: Sequence(CD!Property)): CD!Property =
+	s -> iterate(e; f: CD!Property = s -> first() | if e.extractNotationOrder<f.
+			extractNotationOrder then e else f endif);
+
+helper context String def: cqlType: String =
+	let m: Map(String, String) =
+		Map{('String',
+					'text'),
+					('long',
+					'bigint'),
+					('ByteBuffer',
+					'blob'),
+					('boolean',
+					'boolean'),
+					('BigDecimal',
+					'decimal'),
+					('double',
+					'double'),
+					('float',
+					'float'),
+					('InetAddress',
+					'inet'),
+					('int',
+					'int'),
+					('Date',
+					'timestamp'),
+					('UUID',
+					'timeuuid'),
+					('TupleType',
+					'tuple'),
+					('BigInteger',
+					'varint')}
+	in
+		if not m -> get(self)->oclIsUndefined()
+		then m -> get(self)
+		else
+			self
+		endif;
+
+helper def: conStrings(ss: Sequence(String), cs: String): String =
+	if (ss -> size() = 1) then
+		ss -> first()
+	else
+		ss -> first() + cs + thisModule.conStrings(ss -> subSequence(2, ss -> size()), cs)
+	endif;
+
+helper context CD!Class def: needGenerate: Boolean =
+	if self.allAttrsND = 0 then
+		false
+	else
+		if self.allAttrsND -> select(e | e.extractNotation <> 'ct') -> size() = 0 then
+			false
+		else
+			true
+		endif
+	endif;
+
+helper context CD!Property def: multiplicity: String =
+	if (self.upper = '1') then
+		'1'
+	else
+		'*'
+	endif;
+
+-- None error is a dream. Evolve code to get better.

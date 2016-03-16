@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:cd="/ClassDiagram2Cassandra/Metamodels/ClassDiagram.ecore">
+  <cd:DataType name="String"/>
+  <cd:DataType name="int"/>
+  <cd:DataType name="Date"/>
+  <cd:DataType name="boolean"/>
+  <cd:DataType name="UUID"/>
+  <cd:DataType name="long"/>
+  <cd:DataType name="float"/>
+  <cd:Class name="account">
+    <ownedAttribute name="email[p]" type="/0"/>
+    <ownedAttribute name="passwd" type="/0"/>
+    <ownedAttribute name="level[i]" type="/1"/>
+    <ownedAttribute name="reg_time" type="/2"/>
+  </cd:Class>
+  <cd:Class name="user">
+  	<ownedAttribute name="u_name[p]" type="/0"/>
+  	<ownedAttribute name="cellphone[c]" type="/0"/>
+  </cd:Class>
+  <cd:Class name="student">
+  	<ownedAttribute name="gender" type="/3"/>
+  	<ownedAttribute name="id_card" type="/0"/>
+  	<ownedAttribute name="birthday" type="/2"/>
+  	<ownedAttribute name="home_add" type="/0"/>
+  	<ownedAttribute name="postcode" type="/0"/>
+  	<ownedAttribute name="marital_sta" type="/1"/>
+  	<ownedAttribute name="enrol_time" type="/2"/>
+  	<ownedAttribute name="gpa" type="/6"/>
+  </cd:Class>
+  <cd:Class name="employer">
+  	<ownedAttribute name="company" type="/0"/>
+  	<ownedAttribute name="pri_phone" type="/0"/>
+  	<ownedAttribute name="fax" type="/0"/>
+  	<ownedAttribute name="address" type="/0"/>
+  	<ownedAttribute name="website" type="/0"/>
+  	<ownedAttribute name="pri_email" type="/0"/>
+  	<ownedAttribute name="nature" type="/1"/>
+  	<ownedAttribute name="scale" type="/1"/>
+  	<ownedAttribute name="industry" type="/1"/>
+  	<ownedAttribute name="briefintro" type="/0"/>
+  </cd:Class>
+  <cd:Class name="sys_admin">
+  	<ownedAttribute name="department" type="/0"/>
+  </cd:Class>
+  <cd:Class name="jobinfo">
+  	<ownedAttribute name="posttime[p]" type="/4"/>
+  	<ownedAttribute name="name" type="/0"/>
+  	<ownedAttribute name="function" type="/0"/>
+  	<ownedAttribute name="duty" type="/0"/>
+  	<ownedAttribute name="intro" type="/0"/>
+  	<ownedAttribute name="req_num" type="/1"/>
+  	<ownedAttribute name="requirement" type="/0"/>
+  	<ownedAttribute name="detail" type="/0"/>
+  	<ownedAttribute name="views[ct]" type="/5"/>
+  </cd:Class>
+  <cd:Class name="application">
+    <ownedAttribute name="app_time[p]" type="/4"/>
+    <ownedAttribute name="status" type="/1"/>
+    <ownedAttribute name="agreed" type="/3"/>
+    <ownedAttribute name="agr_time" type="/2"/>
+  </cd:Class>
+  <cd:Class name="invitation">
+  	<ownedAttribute name="inv_time[p]" type="/4"/>
+  	<ownedAttribute name="text" type="/0"/>
+  </cd:Class>
+  <cd:Class name="notice">
+  	<ownedAttribute name="posttime[p]" type="/4"/>
+  	<ownedAttribute name="title" type="/0"/>
+  	<ownedAttribute name="text" type="/0"/>
+  	<ownedAttribute name="uri" type="/0"/>
+  </cd:Class>
+  <cd:Generalization general="/8" specific="/9"/>
+  <cd:Generalization general="/8" specific="/10"/>
+  <cd:Generalization general="/8" specific="/11"/>
+  <cd:Association name="">
+  	<memberEnd name="Account" type="/7" upper="1"/>
+  	<memberEnd name="User" type="/8" upper="1"/>
+  </cd:Association>
+  <cd:Association name="publish[d:end2.name][d:end2.function][d:end2.duty][d:end2.req_num]">
+  	<memberEnd name="Employer" type="/10" upper="1"/>
+  	<memberEnd name="Job" type="/12" upper="*"/>
+  </cd:Association>
+  <cd:Association name="">
+  	<memberEnd name="Job" type="/12" upper="*"/>
+  	<memberEnd name="Employer" type="/10" upper="1"/>
+  </cd:Association>
+  <cd:Association name="">
+  	<memberEnd name="Applicant" type="/9" upper="1"/>
+  	<memberEnd name="Application" type="/13" upper="*"/>
+  </cd:Association>
+  <cd:Association name="">
+  	<memberEnd name="Application" type="/13" upper="*"/>
+  	<memberEnd name="Applicant" type="/9" upper="1"/>
+  </cd:Association>
+  <cd:Association name="count">
+  	<memberEnd name="Job" type="/12" upper="1"/>
+  	<memberEnd name="Application" type="/13" upper="*"/>
+  </cd:Association>
+  <cd:Association name="re">
+  	<memberEnd name="Application" type="/13" upper="*"/>
+  	<memberEnd name="Job" type="/12" upper="1"/>
+  </cd:Association>
+  <cd:Association name="re[d:end2.company]">
+  	<memberEnd name="Application" type="/13" upper="*"/>
+  	<memberEnd name="Employer" type="/10" upper="1"/>
+  </cd:Association>
+  <cd:Association name="">
+    <memberEnd name="Employer" type="/10" upper="1"/>
+  	<memberEnd name="Invitation" type="/14" upper="*"/>
+  </cd:Association>
+  <cd:Association name="[d:end2.company]">
+  	<memberEnd name="Invitation" type="/14" upper="*"/>
+  	<memberEnd name="Employer" type="/10" upper="1"/>
+  </cd:Association>
+  <cd:Association name="">
+  	<memberEnd name="Invitation" type="/14" upper="*"/>
+  	<memberEnd name="Student" type="/9" upper="1"/>
+  </cd:Association>
+  <cd:Association name="invite">
+  	<memberEnd name="Student" type="/9" upper="1"/>
+  	<memberEnd name="Invitation" type="/14" upper="*"/>
+  </cd:Association>
+  <cd:Association name="postedby">
+  	<memberEnd name="Notice" type="/15" upper="*"/>
+  	<memberEnd name="poster" type="/11" upper="*"/>
+  </cd:Association>
+</xmi:XMI>

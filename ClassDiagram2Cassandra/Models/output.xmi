@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ca="/ClassDiagram2Cassandra/Metamodels/Cassandra.ecore">
+  <ca:Table name="account">
+    <partitionKey name="email" dataType="text"/>
+    <indexedColumn name="level" dataType="int"/>
+    <otherColumn name="reg_time" dataType="timestamp"/>
+    <otherColumn name="passwd" dataType="text"/>
+    <otherColumn name="User_pk" dataType="frozen &lt;tuple &lt;text, text>>"/>
+  </ca:Table>
+  <ca:Table name="user">
+    <partitionKey name="u_name" dataType="text"/>
+    <clusteringColumn name="cellphone" dataType="text"/>
+    <otherColumn name="website" dataType="text"/>
+    <otherColumn name="fax" dataType="text"/>
+    <otherColumn name="birthday" dataType="timestamp"/>
+    <otherColumn name="pri_email" dataType="text"/>
+    <otherColumn name="industry" dataType="int"/>
+    <otherColumn name="nature" dataType="int"/>
+    <otherColumn name="briefintro" dataType="text"/>
+    <otherColumn name="postcode" dataType="text"/>
+    <otherColumn name="marital_sta" dataType="int"/>
+    <otherColumn name="address" dataType="text"/>
+    <otherColumn name="scale" dataType="int"/>
+    <otherColumn name="id_card" dataType="text"/>
+    <otherColumn name="gender" dataType="boolean"/>
+    <otherColumn name="home_add" dataType="text"/>
+    <otherColumn name="pri_phone" dataType="text"/>
+    <otherColumn name="gpa" dataType="float"/>
+    <otherColumn name="company" dataType="text"/>
+    <otherColumn name="department" dataType="text"/>
+    <otherColumn name="enrol_time" dataType="timestamp"/>
+  </ca:Table>
+  <ca:Table name="jobinfo">
+    <partitionKey name="posttime" dataType="timeuuid"/>
+    <otherColumn name="function" dataType="text"/>
+    <otherColumn name="requirement" dataType="text"/>
+    <otherColumn name="intro" dataType="text"/>
+    <otherColumn name="req_num" dataType="int"/>
+    <otherColumn name="detail" dataType="text"/>
+    <otherColumn name="duty" dataType="text"/>
+    <otherColumn name="name" dataType="text"/>
+    <otherColumn name="Employer_pk" dataType="frozen &lt;tuple &lt;text, text>>"/>
+  </ca:Table>
+  <ca:Table name="application">
+    <partitionKey name="app_time" dataType="timeuuid"/>
+    <otherColumn name="agr_time" dataType="timestamp"/>
+    <otherColumn name="status" dataType="int"/>
+    <otherColumn name="agreed" dataType="boolean"/>
+    <otherColumn name="Applicant_pk" dataType="frozen &lt;tuple &lt;text, text>>"/>
+    <otherColumn name="re_Job_pk" dataType="frozen &lt;tuple &lt;timeuuid, bigint>>"/>
+    <otherColumn name="re_Employer_pk" dataType="frozen &lt;tuple &lt;text, text>>"/>
+    <otherColumn name="Employer_company" dataType="text"/>
+  </ca:Table>
+  <ca:Table name="invitation">
+    <partitionKey name="inv_time" dataType="timeuuid"/>
+    <otherColumn name="text" dataType="text"/>
+    <otherColumn name="Employer_pk" dataType="frozen &lt;tuple &lt;text, text>>"/>
+    <otherColumn name="Student_pk" dataType="frozen &lt;tuple &lt;text, text>>"/>
+    <otherColumn name="Employer_company" dataType="text"/>
+  </ca:Table>
+  <ca:Table name="notice">
+    <partitionKey name="posttime" dataType="timeuuid"/>
+    <otherColumn name="text" dataType="text"/>
+    <otherColumn name="uri" dataType="text"/>
+    <otherColumn name="title" dataType="text"/>
+  </ca:Table>
+  <ca:Table name="jobinfo_views_counter">
+    <partitionKey name="posttime" dataType="timeuuid"/>
+    <otherColumn name="views" dataType="counter"/>
+  </ca:Table>
+  <ca:Table name="publish_user_jobinfo">
+    <partitionKey name="u_name" dataType="text"/>
+    <clusteringColumn name="cellphone" dataType="text"/>
+    <clusteringColumn name="posttime" dataType="timeuuid"/>
+    <otherColumn name="Job_function" dataType="text"/>
+    <otherColumn name="Job_req_num" dataType="int"/>
+    <otherColumn name="Job_duty" dataType="text"/>
+    <otherColumn name="Job_name" dataType="text"/>
+  </ca:Table>
+  <ca:Table name="_user_application">
+    <partitionKey name="u_name" dataType="text"/>
+    <clusteringColumn name="cellphone" dataType="text"/>
+    <clusteringColumn name="app_time" dataType="timeuuid"/>
+  </ca:Table>
+  <ca:Table name="count_jobinfo_application">
+    <partitionKey name="posttime" dataType="timeuuid"/>
+    <clusteringColumn name="app_time" dataType="timeuuid"/>
+  </ca:Table>
+  <ca:Table name="_user_invitation">
+    <partitionKey name="u_name" dataType="text"/>
+    <clusteringColumn name="cellphone" dataType="text"/>
+    <clusteringColumn name="inv_time" dataType="timeuuid"/>
+  </ca:Table>
+  <ca:Table name="invite_user_invitation">
+    <partitionKey name="u_name" dataType="text"/>
+    <clusteringColumn name="cellphone" dataType="text"/>
+    <clusteringColumn name="inv_time" dataType="timeuuid"/>
+  </ca:Table>
+  <ca:Table name="postedby_notice_user">
+    <partitionKey name="posttime" dataType="timeuuid"/>
+    <clusteringColumn name="u_name" dataType="text"/>
+    <clusteringColumn name="cellphone" dataType="text"/>
+  </ca:Table>
+</xmi:XMI>
